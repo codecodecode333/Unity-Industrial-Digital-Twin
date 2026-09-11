@@ -1,0 +1,12 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/TwinTrace/Scenes/Phase001.unity
+    guid: 60be118760e9ef34f9c5b7b8a6a05fcd
+  m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

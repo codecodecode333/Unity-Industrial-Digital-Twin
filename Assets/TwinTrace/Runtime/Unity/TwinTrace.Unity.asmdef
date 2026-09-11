@@ -1,0 +1,17 @@
+{
+  "name": "TwinTrace.Unity",
+  "rootNamespace": "TwinTrace",
+  "references": [
+    "TwinTrace.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
+
