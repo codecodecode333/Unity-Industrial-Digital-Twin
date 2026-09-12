@@ -11,6 +11,7 @@ namespace TwinTrace.Composition
     public sealed class TwinTraceBootstrap : MonoBehaviour
     {
         [SerializeField] private string motorDeviceId = "MOTOR-001";
+        [SerializeField] private string motorDisplayName = "Cooling Motor A";
         [SerializeField] private TelemetrySourceBehaviour telemetrySource;
         [SerializeField] private DevicePresenter devicePresenter;
 
@@ -33,7 +34,11 @@ namespace TwinTrace.Composition
                 throw new InvalidOperationException("A device presenter component is required.");
             }
 
-            DeviceState motor = new DeviceState(new DeviceId(motorDeviceId));
+            DeviceDescriptor motorDescriptor = new DeviceDescriptor(
+                new DeviceId(motorDeviceId),
+                DeviceKind.Motor,
+                motorDisplayName);
+            DeviceState motor = new DeviceState(motorDescriptor);
             _registry = new DeviceRegistry();
             _registry.Register(motor);
 
@@ -70,7 +75,8 @@ namespace TwinTrace.Composition
 
         private void HandleFrameReceived(TelemetryFrame frame)
         {
-            if (!_registry.TryApply(frame))
+            TelemetryApplyResult result = _registry.Apply(frame);
+            if (result == TelemetryApplyResult.UnknownDevice)
             {
                 Debug.LogWarning(
                     $"Ignoring telemetry for unregistered device '{frame.DeviceId}'.",

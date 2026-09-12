@@ -2,14 +2,17 @@
 
 TwinTrace is a Unity 6 portfolio project for an industrial Digital Twin Incident Replay System.
 
-The repository currently contains **Phase 001: Foundation** only:
+The repository currently contains **Phase 002-A: Multi-Device Domain Foundation**:
 
 - a Unity-independent device domain model;
+- immutable device descriptors for motors and conveyors;
+- ID-based routing for multiple registered device states;
+- sequence-based rejection of stale telemetry;
 - a replaceable telemetry source boundary;
 - a deterministic simulated telemetry source;
 - one motor device whose runtime state is shown in the Inspector and a small debug panel.
 
-MQTT, fault injection, alarms, recording, replay, and timeline features are intentionally out of scope for this phase.
+Multi-device simulation and presentation, MQTT, fault injection, alarms, recording, replay, and timeline features are intentionally out of scope for this phase.
 
 ## Requirements
 
@@ -30,10 +33,11 @@ If the demo scene needs to be recreated, use **TwinTrace > Create Phase 001 Demo
 SimulationTelemetrySource
   -> TelemetryFrame event
   -> TwinTraceBootstrap
-  -> DeviceRegistry
+  -> DeviceRegistry.Apply
   -> DeviceState.Apply
   -> DevicePresenter
 ```
 
 Pure C# code lives in `Assets/TwinTrace/Runtime/Core`. Its assembly has `noEngineReferences` enabled so the domain cannot accidentally depend on `UnityEngine`. Unity-facing source, presentation, and composition code lives in `Assets/TwinTrace/Runtime/Unity`.
 
+After the first frame is applied, a device accepts only frames whose sequence is greater than its last applied sequence. Duplicate and older frames return `TelemetryApplyResult.Stale` without changing state or raising the `Changed` event.

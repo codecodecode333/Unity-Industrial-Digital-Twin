@@ -23,16 +23,14 @@ namespace TwinTrace.Domain
             return _devices.TryGetValue(id, out device);
         }
 
-        public bool TryApply(TelemetryFrame frame)
+        public TelemetryApplyResult Apply(TelemetryFrame frame)
         {
             if (!_devices.TryGetValue(frame.DeviceId, out DeviceState device))
             {
-                return false;
+                return TelemetryApplyResult.UnknownDevice;
             }
 
-            device.Apply(frame);
-            return true;
+            return device.Apply(frame);
         }
     }
 }
-
