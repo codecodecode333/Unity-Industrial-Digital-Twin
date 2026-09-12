@@ -2,17 +2,18 @@
 
 TwinTrace is a Unity 6 portfolio project for an industrial Digital Twin Incident Replay System.
 
-The repository currently contains **Phase 002-A: Multi-Device Domain Foundation**:
+The repository currently contains **Phase 002-B: Multi-Device Simulation**:
 
 - a Unity-independent device domain model;
 - immutable device descriptors for motors and conveyors;
 - ID-based routing for multiple registered device states;
 - sequence-based rejection of stale telemetry;
 - a replaceable telemetry source boundary;
-- a deterministic simulated telemetry source;
-- one motor device whose runtime state is shown in the Inspector and a small debug panel.
+- simulated telemetry for two motors and one conveyor;
+- independent sequence and telemetry variation per device;
+- one selected motor whose runtime state is shown in the Inspector and a small debug panel.
 
-Multi-device simulation and presentation, MQTT, fault injection, alarms, recording, replay, and timeline features are intentionally out of scope for this phase.
+Multi-device presentation, MQTT, fault injection, alarms, recording, replay, and timeline features are intentionally out of scope for this phase.
 
 ## Requirements
 
@@ -31,7 +32,8 @@ If the demo scene needs to be recreated, use **TwinTrace > Create Phase 001 Demo
 
 ```text
 SimulationTelemetrySource
-  -> TelemetryFrame event
+  -> MOTOR-001 / MOTOR-002 / CONVEYOR-001 frames
+  -> TelemetryFrame event for each device
   -> TwinTraceBootstrap
   -> DeviceRegistry.Apply
   -> DeviceState.Apply

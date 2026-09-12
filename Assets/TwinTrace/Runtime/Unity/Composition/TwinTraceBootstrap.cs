@@ -10,8 +10,8 @@ namespace TwinTrace.Composition
     [RequireComponent(typeof(DevicePresenter))]
     public sealed class TwinTraceBootstrap : MonoBehaviour
     {
-        [SerializeField] private string motorDeviceId = "MOTOR-001";
-        [SerializeField] private string motorDisplayName = "Cooling Motor A";
+        private static readonly DeviceId PresentedDeviceId = new DeviceId("MOTOR-001");
+
         [SerializeField] private TelemetrySourceBehaviour telemetrySource;
         [SerializeField] private DevicePresenter devicePresenter;
 
@@ -34,20 +34,33 @@ namespace TwinTrace.Composition
                 throw new InvalidOperationException("A device presenter component is required.");
             }
 
-            DeviceDescriptor motorDescriptor = new DeviceDescriptor(
-                new DeviceId(motorDeviceId),
-                DeviceKind.Motor,
-                motorDisplayName);
-            DeviceState motor = new DeviceState(motorDescriptor);
+            SimulationDeviceProfile[] simulationProfiles = CreateSimulationProfiles();
             _registry = new DeviceRegistry();
-            _registry.Register(motor);
+            DeviceState presentedDevice = null;
+
+            foreach (SimulationDeviceProfile profile in simulationProfiles)
+            {
+                var device = new DeviceState(profile.Descriptor);
+                _registry.Register(device);
+
+                if (device.Id == PresentedDeviceId)
+                {
+                    presentedDevice = device;
+                }
+            }
 
             if (telemetrySource is SimulationTelemetrySource simulation)
             {
-                simulation.Configure(motor.Id);
+                simulation.Configure(simulationProfiles);
             }
 
-            devicePresenter.Bind(motor);
+            if (presentedDevice == null)
+            {
+                throw new InvalidOperationException(
+                    $"Presented device '{PresentedDeviceId}' is not registered.");
+            }
+
+            devicePresenter.Bind(presentedDevice);
             _activeSource = telemetrySource;
         }
 
@@ -89,6 +102,40 @@ namespace TwinTrace.Composition
             telemetrySource = GetComponent<TelemetrySourceBehaviour>();
             telemetrySource ??= gameObject.AddComponent<SimulationTelemetrySource>();
             devicePresenter = GetComponent<DevicePresenter>();
+        }
+
+        private static SimulationDeviceProfile[] CreateSimulationProfiles()
+        {
+            return new[]
+            {
+                new SimulationDeviceProfile(
+                    new DeviceDescriptor(
+                        new DeviceId("MOTOR-001"),
+                        DeviceKind.Motor,
+                        "Cooling Motor A"),
+                    55f,
+                    1450f,
+                    60f,
+                    0f),
+                new SimulationDeviceProfile(
+                    new DeviceDescriptor(
+                        new DeviceId("MOTOR-002"),
+                        DeviceKind.Motor,
+                        "Cooling Motor B"),
+                    48f,
+                    1000f,
+                    40f,
+                    1.8f),
+                new SimulationDeviceProfile(
+                    new DeviceDescriptor(
+                        new DeviceId("CONVEYOR-001"),
+                        DeviceKind.Conveyor,
+                        "Main Conveyor"),
+                    42f,
+                    500f,
+                    50f,
+                    3.4f)
+            };
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TwinTrace.Domain;
 using UnityEngine;
 
@@ -8,26 +9,58 @@ namespace TwinTrace.Telemetry
     public sealed class SimulationTelemetrySource : TelemetrySourceBehaviour
     {
         [SerializeField, Min(0.05f)] private float intervalSeconds = 0.5f;
-        [SerializeField] private float baseTemperatureCelsius = 55f;
-        [SerializeField, Min(0f)] private float baseRpm = 1450f;
-        [SerializeField, Range(0f, 100f)] private float baseLoadPercent = 62f;
 
-        private DeviceId _deviceId;
-        private bool _isConfigured;
+        private IReadOnlyList<SimulationDeviceProfile> _profiles =
+            Array.Empty<SimulationDeviceProfile>();
+        private SimulationDeviceRuntime[] _runtimeDevices =
+            Array.Empty<SimulationDeviceRuntime>();
         private bool _isRunning;
         private float _elapsedSeconds;
         private float _simulationSeconds;
-        private long _sequence;
 
-        public void Configure(DeviceId deviceId)
+        public IReadOnlyList<SimulationDeviceProfile> Profiles => _profiles;
+
+        public void Configure(IReadOnlyList<SimulationDeviceProfile> profiles)
         {
-            if (!deviceId.IsValid)
+            if (_isRunning)
             {
-                throw new ArgumentException("Simulation requires a valid device ID.", nameof(deviceId));
+                throw new InvalidOperationException("Stop the simulation before configuring it.");
             }
 
-            _deviceId = deviceId;
-            _isConfigured = true;
+            if (profiles == null)
+            {
+                throw new ArgumentNullException(nameof(profiles));
+            }
+
+            if (profiles.Count == 0)
+            {
+                throw new ArgumentException("At least one simulation profile is required.", nameof(profiles));
+            }
+
+            var deviceIds = new HashSet<DeviceId>();
+            var configuredProfiles = new SimulationDeviceProfile[profiles.Count];
+            var runtimeDevices = new SimulationDeviceRuntime[profiles.Count];
+
+            for (int index = 0; index < profiles.Count; index++)
+            {
+                SimulationDeviceProfile profile = profiles[index]
+                    ?? throw new ArgumentException("Simulation profiles cannot contain null.", nameof(profiles));
+
+                if (!deviceIds.Add(profile.Descriptor.Id))
+                {
+                    throw new ArgumentException(
+                        $"Duplicate simulation device '{profile.Descriptor.Id}'.",
+                        nameof(profiles));
+                }
+
+                configuredProfiles[index] = profile;
+                runtimeDevices[index] = new SimulationDeviceRuntime(profile);
+            }
+
+            _profiles = Array.AsReadOnly(configuredProfiles);
+            _runtimeDevices = runtimeDevices;
+            _elapsedSeconds = 0f;
+            _simulationSeconds = 0f;
         }
 
         public override void Begin()
@@ -37,14 +70,14 @@ namespace TwinTrace.Telemetry
                 return;
             }
 
-            if (!_isConfigured)
+            if (_runtimeDevices.Length == 0)
             {
                 throw new InvalidOperationException("Configure the simulation before starting it.");
             }
 
             _isRunning = true;
             _elapsedSeconds = 0f;
-            PublishFrame();
+            PublishFrames();
         }
 
         public override void End()
@@ -66,26 +99,34 @@ namespace TwinTrace.Telemetry
             }
 
             _elapsedSeconds %= intervalSeconds;
-            PublishFrame();
+            PublishFrames();
         }
 
-        private void PublishFrame()
+        private void PublishFrames()
         {
-            float temperature = baseTemperatureCelsius + Mathf.Sin(_simulationSeconds * 0.7f) * 6f;
-            float rpm = baseRpm + Mathf.Sin(_simulationSeconds * 1.1f) * 120f;
-            float load = Mathf.Clamp(
-                baseLoadPercent + Mathf.Sin(_simulationSeconds * 0.5f) * 18f,
-                0f,
-                100f);
+            DateTimeOffset capturedAtUtc = DateTimeOffset.UtcNow;
 
-            _sequence++;
-            Publish(new TelemetryFrame(
-                _deviceId,
-                _sequence,
-                DateTimeOffset.UtcNow,
-                temperature,
-                Mathf.Max(0f, rpm),
-                load));
+            foreach (SimulationDeviceRuntime runtime in _runtimeDevices)
+            {
+                SimulationDeviceProfile profile = runtime.Profile;
+                float phase = _simulationSeconds + profile.PhaseOffset;
+                float temperature =
+                    profile.BaseTemperatureCelsius + Mathf.Sin(phase * 0.7f) * 6f;
+                float rpm = profile.BaseRpm + Mathf.Sin(phase * 1.1f) * 120f;
+                float load = Mathf.Clamp(
+                    profile.BaseLoadPercent + Mathf.Sin(phase * 0.5f) * 18f,
+                    0f,
+                    100f);
+
+                runtime.Sequence++;
+                Publish(new TelemetryFrame(
+                    profile.Descriptor.Id,
+                    runtime.Sequence,
+                    capturedAtUtc,
+                    temperature,
+                    Mathf.Max(0f, rpm),
+                    load));
+            }
 
             _simulationSeconds += intervalSeconds;
         }
@@ -93,9 +134,17 @@ namespace TwinTrace.Telemetry
         private void OnValidate()
         {
             intervalSeconds = Mathf.Max(0.05f, intervalSeconds);
-            baseRpm = Mathf.Max(0f, baseRpm);
-            baseLoadPercent = Mathf.Clamp(baseLoadPercent, 0f, 100f);
+        }
+
+        private sealed class SimulationDeviceRuntime
+        {
+            public SimulationDeviceRuntime(SimulationDeviceProfile profile)
+            {
+                Profile = profile;
+            }
+
+            public SimulationDeviceProfile Profile { get; }
+            public long Sequence { get; set; }
         }
     }
 }
-
