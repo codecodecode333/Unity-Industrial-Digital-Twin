@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/TwinTrace/Scenes/Phase001.unity
-    guid: 60be118760e9ef34f9c5b7b8a6a05fcd
+    path: Assets/TwinTrace/Scenes/Phase002.unity
+    guid: 0e33417c160800946975f86bee3cc4eb
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

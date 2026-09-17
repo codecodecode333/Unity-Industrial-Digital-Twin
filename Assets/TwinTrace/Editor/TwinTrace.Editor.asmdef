@@ -2,6 +2,7 @@
   "name": "TwinTrace.Editor",
   "rootNamespace": "TwinTrace",
   "references": [
+    "TwinTrace.Core",
     "TwinTrace.Unity"
   ],
   "includePlatforms": [
@@ -16,4 +17,3 @@
   "versionDefines": [],
   "noEngineReferences": false
 }
-

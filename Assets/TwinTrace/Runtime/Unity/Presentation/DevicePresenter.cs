@@ -6,9 +6,17 @@ namespace TwinTrace.Presentation
     [DisallowMultipleComponent]
     public sealed class DevicePresenter : MonoBehaviour
     {
-        [Header("Debug View")]
-        [SerializeField] private bool showDebugPanel = true;
-        [SerializeField] private Vector2 panelPosition = new Vector2(16f, 16f);
+        private static readonly int BaseColorProperty = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorProperty = Shader.PropertyToID("_Color");
+
+        [Header("3D Visualization")]
+        [SerializeField] private Renderer statusRenderer;
+        [SerializeField] private Transform[] rotatingParts = new Transform[0];
+        [SerializeField] private Vector3 rotationAxis = Vector3.up;
+        [SerializeField, Min(0f)] private float rpmVisualizationScale = 0.05f;
+        [SerializeField] private Color offlineColor = new Color(0.35f, 0.35f, 0.35f);
+        [SerializeField] private Color idleColor = new Color(0.1f, 0.4f, 1f);
+        [SerializeField] private Color runningColor = new Color(0.1f, 0.8f, 0.2f);
 
         [Header("Runtime State (Read Only)")]
         [SerializeField] private string deviceId = string.Empty;
@@ -20,11 +28,26 @@ namespace TwinTrace.Presentation
         [SerializeField] private string capturedAtUtc = string.Empty;
 
         private DeviceState _state;
+        private MaterialPropertyBlock _propertyBlock;
 
         public string DisplayedDeviceId => deviceId;
         public DeviceOperationalState DisplayedOperationalState =>
             _state == null ? DeviceOperationalState.Offline : _state.OperationalState;
         public long DisplayedSequence => sequence;
+        public bool IsBound => _state != null;
+
+        public void ConfigureVisuals(
+            Renderer deviceStatusRenderer,
+            Transform[] deviceRotatingParts,
+            Vector3 deviceRotationAxis,
+            float visualizationScale)
+        {
+            statusRenderer = deviceStatusRenderer;
+            rotatingParts = deviceRotatingParts ?? new Transform[0];
+            rotationAxis = deviceRotationAxis;
+            rpmVisualizationScale = Mathf.Max(0f, visualizationScale);
+            ApplyStatusColor(_state?.OperationalState ?? DeviceOperationalState.Offline);
+        }
 
         public void Bind(DeviceState state)
         {
@@ -36,13 +59,20 @@ namespace TwinTrace.Presentation
 
         public void Unbind()
         {
-            if (_state == null)
+            if (_state != null)
             {
-                return;
+                _state.Changed -= HandleStateChanged;
+                _state = null;
             }
 
-            _state.Changed -= HandleStateChanged;
-            _state = null;
+            deviceId = string.Empty;
+            operationalState = DeviceOperationalState.Offline.ToString();
+            temperatureCelsius = 0f;
+            rpm = 0f;
+            loadPercent = 0f;
+            sequence = 0;
+            capturedAtUtc = "No telemetry";
+            ApplyStatusColor(DeviceOperationalState.Offline);
         }
 
         private void OnDestroy()
@@ -66,25 +96,58 @@ namespace TwinTrace.Presentation
             capturedAtUtc = state.LastTelemetryAtUtc == default
                 ? "No telemetry"
                 : state.LastTelemetryAtUtc.ToString("HH:mm:ss.fff 'UTC'");
+            ApplyStatusColor(state.OperationalState);
         }
 
-        private void OnGUI()
+        private void Update()
         {
-            if (!showDebugPanel || _state == null)
+            if (_state == null || _state.Rpm <= 0f)
             {
                 return;
             }
 
-            GUILayout.BeginArea(
-                new Rect(panelPosition.x, panelPosition.y, 300f, 150f),
-                "TwinTrace - Motor Telemetry",
-                GUI.skin.window);
-            GUILayout.Label($"Device: {deviceId}");
-            GUILayout.Label($"State: {operationalState}");
-            GUILayout.Label($"Temperature: {temperatureCelsius:F1} °C");
-            GUILayout.Label($"RPM: {rpm:F0}");
-            GUILayout.Label($"Load: {loadPercent:F1} %");
-            GUILayout.EndArea();
+            float rotationDegrees = _state.Rpm * rpmVisualizationScale * Time.deltaTime;
+            foreach (Transform rotatingPart in rotatingParts)
+            {
+                if (rotatingPart != null)
+                {
+                    rotatingPart.Rotate(rotationAxis, rotationDegrees, Space.Self);
+                }
+            }
+        }
+
+        private void ApplyStatusColor(DeviceOperationalState state)
+        {
+            if (statusRenderer == null || statusRenderer.sharedMaterial == null)
+            {
+                return;
+            }
+
+            int propertyId;
+            if (statusRenderer.sharedMaterial.HasProperty(BaseColorProperty))
+            {
+                propertyId = BaseColorProperty;
+            }
+            else if (statusRenderer.sharedMaterial.HasProperty(ColorProperty))
+            {
+                propertyId = ColorProperty;
+            }
+            else
+            {
+                return;
+            }
+
+            Color color = state switch
+            {
+                DeviceOperationalState.Idle => idleColor,
+                DeviceOperationalState.Running => runningColor,
+                _ => offlineColor
+            };
+
+            _propertyBlock ??= new MaterialPropertyBlock();
+            statusRenderer.GetPropertyBlock(_propertyBlock);
+            _propertyBlock.SetColor(propertyId, color);
+            statusRenderer.SetPropertyBlock(_propertyBlock);
         }
     }
 }

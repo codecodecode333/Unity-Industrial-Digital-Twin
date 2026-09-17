@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TwinTrace.Domain;
 using TwinTrace.Presentation;
 using TwinTrace.Telemetry;
@@ -7,13 +8,9 @@ using UnityEngine;
 namespace TwinTrace.Composition
 {
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(DevicePresenter))]
     public sealed class TwinTraceBootstrap : MonoBehaviour
     {
-        private static readonly DeviceId PresentedDeviceId = new DeviceId("MOTOR-001");
-
         [SerializeField] private TelemetrySourceBehaviour telemetrySource;
-        [SerializeField] private DevicePresenter devicePresenter;
 
         private DeviceRegistry _registry;
         private ITelemetrySource _activeSource;
@@ -22,45 +19,26 @@ namespace TwinTrace.Composition
         {
             telemetrySource ??= GetComponent<TelemetrySourceBehaviour>();
             telemetrySource ??= gameObject.AddComponent<SimulationTelemetrySource>();
-            devicePresenter ??= GetComponent<DevicePresenter>();
 
             if (telemetrySource == null)
             {
                 throw new InvalidOperationException("A telemetry source component is required.");
             }
 
-            if (devicePresenter == null)
-            {
-                throw new InvalidOperationException("A device presenter component is required.");
-            }
-
-            SimulationDeviceProfile[] simulationProfiles = CreateSimulationProfiles();
+            DeviceDescriptor[] descriptors = CreateDeviceDescriptors();
             _registry = new DeviceRegistry();
-            DeviceState presentedDevice = null;
 
-            foreach (SimulationDeviceProfile profile in simulationProfiles)
+            foreach (DeviceDescriptor descriptor in descriptors)
             {
-                var device = new DeviceState(profile.Descriptor);
-                _registry.Register(device);
-
-                if (device.Id == PresentedDeviceId)
-                {
-                    presentedDevice = device;
-                }
+                _registry.Register(new DeviceState(descriptor));
             }
 
             if (telemetrySource is SimulationTelemetrySource simulation)
             {
-                simulation.Configure(simulationProfiles);
+                simulation.Configure(CreateSimulationProfiles(descriptors));
             }
 
-            if (presentedDevice == null)
-            {
-                throw new InvalidOperationException(
-                    $"Presented device '{PresentedDeviceId}' is not registered.");
-            }
-
-            devicePresenter.Bind(presentedDevice);
+            BindSceneDevices();
             _activeSource = telemetrySource;
         }
 
@@ -101,36 +79,82 @@ namespace TwinTrace.Composition
         {
             telemetrySource = GetComponent<TelemetrySourceBehaviour>();
             telemetrySource ??= gameObject.AddComponent<SimulationTelemetrySource>();
-            devicePresenter = GetComponent<DevicePresenter>();
         }
 
-        private static SimulationDeviceProfile[] CreateSimulationProfiles()
+        private void BindSceneDevices()
+        {
+            DeviceBinding[] bindings = FindObjectsByType<DeviceBinding>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            var boundIds = new HashSet<DeviceId>();
+
+            foreach (DeviceBinding binding in bindings)
+            {
+                if (!binding.TryGetId(out DeviceId id))
+                {
+                    Debug.LogWarning(
+                        $"Device binding on '{binding.gameObject.name}' has an invalid Device ID.",
+                        binding);
+                    continue;
+                }
+
+                if (!_registry.TryGet(id, out DeviceState state))
+                {
+                    Debug.LogWarning(
+                        $"No registered device matches binding '{id}' on '{binding.gameObject.name}'.",
+                        binding);
+                    continue;
+                }
+
+                if (!boundIds.Add(id))
+                {
+                    Debug.LogWarning(
+                        $"Multiple scene bindings reference device '{id}'.",
+                        binding);
+                }
+
+                binding.Bind(state);
+            }
+        }
+
+        private static DeviceDescriptor[] CreateDeviceDescriptors()
+        {
+            return new[]
+            {
+                new DeviceDescriptor(
+                    new DeviceId("MOTOR-001"),
+                    DeviceKind.Motor,
+                    "Cooling Motor A"),
+                new DeviceDescriptor(
+                    new DeviceId("MOTOR-002"),
+                    DeviceKind.Motor,
+                    "Cooling Motor B"),
+                new DeviceDescriptor(
+                    new DeviceId("CONVEYOR-001"),
+                    DeviceKind.Conveyor,
+                    "Main Conveyor")
+            };
+        }
+
+        private static SimulationDeviceProfile[] CreateSimulationProfiles(
+            IReadOnlyList<DeviceDescriptor> descriptors)
         {
             return new[]
             {
                 new SimulationDeviceProfile(
-                    new DeviceDescriptor(
-                        new DeviceId("MOTOR-001"),
-                        DeviceKind.Motor,
-                        "Cooling Motor A"),
+                    descriptors[0],
                     55f,
                     1450f,
                     60f,
                     0f),
                 new SimulationDeviceProfile(
-                    new DeviceDescriptor(
-                        new DeviceId("MOTOR-002"),
-                        DeviceKind.Motor,
-                        "Cooling Motor B"),
+                    descriptors[1],
                     48f,
                     1000f,
                     40f,
                     1.8f),
                 new SimulationDeviceProfile(
-                    new DeviceDescriptor(
-                        new DeviceId("CONVEYOR-001"),
-                        DeviceKind.Conveyor,
-                        "Main Conveyor"),
+                    descriptors[2],
                     42f,
                     500f,
                     50f,
