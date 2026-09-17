@@ -1,0 +1,148 @@
+.details-panel {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    width: 340px;
+    min-height: 210px;
+    padding-top: 22px;
+    padding-right: 24px;
+    padding-bottom: 24px;
+    padding-left: 24px;
+    background-color: rgba(12, 18, 28, 0.94);
+    border-top-color: rgb(52, 72, 94);
+    border-right-color: rgb(52, 72, 94);
+    border-bottom-color: rgb(52, 72, 94);
+    border-left-color: rgb(52, 72, 94);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    color: rgb(225, 235, 244);
+}
+
+.eyebrow {
+    margin-bottom: 18px;
+    color: rgb(91, 183, 255);
+    font-size: 11px;
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.empty-state {
+    min-height: 120px;
+    justify-content: center;
+}
+
+.empty-title {
+    margin-bottom: 8px;
+    color: rgb(236, 242, 248);
+    font-size: 20px;
+    -unity-font-style: bold;
+}
+
+.empty-copy {
+    max-width: 270px;
+    color: rgb(139, 156, 174);
+    font-size: 13px;
+    white-space: normal;
+}
+
+.details-content {
+    display: none;
+}
+
+.device-name {
+    margin-bottom: 7px;
+    color: rgb(248, 251, 255);
+    font-size: 24px;
+    -unity-font-style: bold;
+}
+
+.identity-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.device-id {
+    margin-right: 10px;
+    color: rgb(177, 197, 215);
+    font-size: 13px;
+}
+
+.device-kind {
+    padding-top: 3px;
+    padding-right: 8px;
+    padding-bottom: 3px;
+    padding-left: 8px;
+    background-color: rgb(31, 52, 72);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    color: rgb(143, 206, 255);
+    font-size: 11px;
+}
+
+.state-block {
+    margin-bottom: 18px;
+    padding-top: 13px;
+    padding-right: 14px;
+    padding-bottom: 13px;
+    padding-left: 14px;
+    background-color: rgba(22, 36, 48, 0.9);
+    border-left-color: rgb(49, 205, 105);
+    border-left-width: 3px;
+}
+
+.section-label {
+    margin-bottom: 4px;
+    color: rgb(126, 146, 164);
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.state-value {
+    color: rgb(76, 224, 129);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.metric-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 34px;
+}
+
+.metric-label {
+    color: rgb(143, 159, 175);
+    font-size: 13px;
+}
+
+.metric-value {
+    color: rgb(238, 244, 250);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.divider {
+    height: 1px;
+    margin-top: 9px;
+    margin-bottom: 9px;
+    background-color: rgb(48, 61, 75);
+}
+
+.last-update-row {
+    min-height: 28px;
+}
+
+.secondary-value {
+    color: rgb(159, 177, 194);
+    font-size: 12px;
+    -unity-font-style: normal;
+}

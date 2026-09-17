@@ -1,0 +1,37 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="details-panel" class="details-panel">
+        <ui:Label text="TWINTRACE  /  LIVE DEVICE" class="eyebrow" />
+        <ui:VisualElement name="empty-state" class="empty-state">
+            <ui:Label text="No Device Selected" class="empty-title" />
+            <ui:Label text="Select a device in the scene to inspect live telemetry." class="empty-copy" />
+        </ui:VisualElement>
+        <ui:VisualElement name="details-content" class="details-content">
+            <ui:Label name="display-name" text="Cooling Motor A" class="device-name" />
+            <ui:VisualElement class="identity-row">
+                <ui:Label name="device-id" text="MOTOR-001" class="device-id" />
+                <ui:Label name="device-kind" text="Motor" class="device-kind" />
+            </ui:VisualElement>
+            <ui:VisualElement class="state-block">
+                <ui:Label text="OPERATIONAL STATE" class="section-label" />
+                <ui:Label name="operational-state" text="RUNNING" class="state-value" />
+            </ui:VisualElement>
+            <ui:VisualElement class="metric-row">
+                <ui:Label text="Temperature" class="metric-label" />
+                <ui:Label name="temperature-value" text="56.4 °C" class="metric-value" />
+            </ui:VisualElement>
+            <ui:VisualElement class="metric-row">
+                <ui:Label text="RPM" class="metric-label" />
+                <ui:Label name="rpm-value" text="1,472" class="metric-value" />
+            </ui:VisualElement>
+            <ui:VisualElement class="metric-row">
+                <ui:Label text="Load" class="metric-label" />
+                <ui:Label name="load-value" text="63.2 %" class="metric-value" />
+            </ui:VisualElement>
+            <ui:VisualElement class="divider" />
+            <ui:VisualElement class="metric-row last-update-row">
+                <ui:Label text="Last Update" class="metric-label" />
+                <ui:Label name="last-update-value" text="19:41:22" class="metric-value secondary-value" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
