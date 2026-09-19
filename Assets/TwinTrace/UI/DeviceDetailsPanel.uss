@@ -112,6 +112,29 @@
     -unity-font-style: bold;
 }
 
+.alarm-block {
+    margin-bottom: 18px;
+    padding-top: 13px;
+    padding-right: 14px;
+    padding-bottom: 13px;
+    padding-left: 14px;
+    background-color: rgba(33, 30, 26, 0.9);
+    border-left-color: rgb(126, 143, 157);
+    border-left-width: 3px;
+}
+
+.alarm-severity {
+    color: rgb(159, 178, 196);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.alarm-code {
+    margin-top: 3px;
+    color: rgb(190, 202, 212);
+    font-size: 12px;
+}
+
 .metric-row {
     flex-direction: row;
     justify-content: space-between;

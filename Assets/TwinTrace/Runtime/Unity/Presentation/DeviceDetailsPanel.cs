@@ -1,4 +1,5 @@
 using System.Globalization;
+using TwinTrace.Alarms;
 using TwinTrace.Domain;
 using TwinTrace.Interaction;
 using TwinTrace.Telemetry;
@@ -17,6 +18,7 @@ namespace TwinTrace.Presentation
         [SerializeField] private FaultInjectionController faultInjectionController;
 
         private DeviceState _state;
+        private DeviceAlarmState _alarmState;
         private bool _isListeningForSelection;
         private VisualElement _viewRoot;
         private VisualElement _panelRoot;
@@ -27,6 +29,8 @@ namespace TwinTrace.Presentation
         private Label _deviceIdLabel;
         private Label _deviceKindLabel;
         private Label _operationalStateLabel;
+        private Label _alarmSeverityLabel;
+        private Label _alarmCodeLabel;
         private Label _temperatureLabel;
         private Label _rpmLabel;
         private Label _loadLabel;
@@ -35,10 +39,13 @@ namespace TwinTrace.Presentation
         private Button _clearFaultButton;
 
         public DeviceState BoundState => _state;
+        public DeviceAlarmState BoundAlarmState => _alarmState;
         public string DisplayedName { get; private set; } = "No Device Selected";
         public string DisplayedDeviceId { get; private set; } = "—";
         public string DisplayedKind { get; private set; } = "—";
         public string DisplayedOperationalState { get; private set; } = "—";
+        public string DisplayedAlarmSeverity { get; private set; } = "—";
+        public string DisplayedAlarmCode { get; private set; } = "—";
         public string DisplayedTemperature { get; private set; } = "—";
         public string DisplayedRpm { get; private set; } = "—";
         public string DisplayedLoad { get; private set; } = "—";
@@ -98,27 +105,50 @@ namespace TwinTrace.Presentation
 
         public void Bind(DeviceState state)
         {
-            if (ReferenceEquals(_state, state))
+            Bind(state, null);
+        }
+
+        public void Bind(DeviceState state, DeviceAlarmState alarmState)
+        {
+            if (state == null)
+            {
+                Clear();
+                return;
+            }
+
+            if (alarmState != null && alarmState.DeviceId != state.Id)
+            {
+                throw new System.InvalidOperationException(
+                    $"Cannot show alarm '{alarmState.DeviceId}' for device '{state.Id}'.");
+            }
+
+            if (ReferenceEquals(_state, state) &&
+                ReferenceEquals(_alarmState, alarmState))
             {
                 Refresh(state);
+                RefreshAlarm(alarmState);
                 return;
             }
 
             UnbindState();
-            if (state == null)
-            {
-                ShowEmptyState();
-                return;
-            }
+            UnbindAlarmState();
 
             _state = state;
             _state.Changed += HandleStateChanged;
+            _alarmState = alarmState;
+            if (_alarmState != null)
+            {
+                _alarmState.Changed += HandleAlarmChanged;
+            }
+
             Refresh(_state);
+            RefreshAlarm(_alarmState);
         }
 
         public void Clear()
         {
             UnbindState();
+            UnbindAlarmState();
             ShowEmptyState();
         }
 
@@ -158,6 +188,8 @@ namespace TwinTrace.Presentation
             _deviceIdLabel = _viewRoot.Q<Label>("device-id");
             _deviceKindLabel = _viewRoot.Q<Label>("device-kind");
             _operationalStateLabel = _viewRoot.Q<Label>("operational-state");
+            _alarmSeverityLabel = _viewRoot.Q<Label>("alarm-severity");
+            _alarmCodeLabel = _viewRoot.Q<Label>("alarm-code");
             _temperatureLabel = _viewRoot.Q<Label>("temperature-value");
             _rpmLabel = _viewRoot.Q<Label>("rpm-value");
             _loadLabel = _viewRoot.Q<Label>("load-value");
@@ -192,12 +224,23 @@ namespace TwinTrace.Presentation
 
         private void HandleSelectionChanged(DeviceBinding binding)
         {
-            Bind(binding != null && binding.IsBound ? binding.BoundState : null);
+            if (binding == null || !binding.IsBound)
+            {
+                Clear();
+                return;
+            }
+
+            Bind(binding.BoundState, binding.BoundAlarmState);
         }
 
         private void HandleStateChanged(DeviceState state)
         {
             Refresh(state);
+        }
+
+        private void HandleAlarmChanged(DeviceAlarmState alarmState)
+        {
+            RefreshAlarm(alarmState);
         }
 
         private void Refresh(DeviceState state)
@@ -232,6 +275,20 @@ namespace TwinTrace.Presentation
             UpdateView();
         }
 
+        private void RefreshAlarm(DeviceAlarmState alarmState)
+        {
+            AlarmSeverity severity = alarmState?.Severity ?? AlarmSeverity.None;
+            AlarmCode code = alarmState?.Code ?? AlarmCode.None;
+            DisplayedAlarmSeverity = severity.ToString().ToUpperInvariant();
+            DisplayedAlarmCode = code switch
+            {
+                AlarmCode.MotorOverheat => "Motor Overheat",
+                AlarmCode.ConveyorJam => "Conveyor Jam",
+                _ => "No Active Alarm"
+            };
+            UpdateView();
+        }
+
         private void UnbindState()
         {
             if (_state == null)
@@ -243,12 +300,25 @@ namespace TwinTrace.Presentation
             _state = null;
         }
 
+        private void UnbindAlarmState()
+        {
+            if (_alarmState == null)
+            {
+                return;
+            }
+
+            _alarmState.Changed -= HandleAlarmChanged;
+            _alarmState = null;
+        }
+
         private void ShowEmptyState()
         {
             DisplayedName = "No Device Selected";
             DisplayedDeviceId = "—";
             DisplayedKind = "—";
             DisplayedOperationalState = "—";
+            DisplayedAlarmSeverity = "—";
+            DisplayedAlarmCode = "—";
             DisplayedTemperature = "—";
             DisplayedRpm = "—";
             DisplayedLoad = "—";
@@ -277,11 +347,29 @@ namespace TwinTrace.Presentation
             SetText(_deviceIdLabel, DisplayedDeviceId);
             SetText(_deviceKindLabel, DisplayedKind);
             SetText(_operationalStateLabel, DisplayedOperationalState);
+            SetText(_alarmSeverityLabel, DisplayedAlarmSeverity);
+            SetText(_alarmCodeLabel, DisplayedAlarmCode);
+            UpdateAlarmSeverityColor();
             SetText(_temperatureLabel, DisplayedTemperature);
             SetText(_rpmLabel, DisplayedRpm);
             SetText(_loadLabel, DisplayedLoad);
             SetText(_lastUpdateLabel, DisplayedLastUpdate);
             UpdateFaultControls();
+        }
+
+        private void UpdateAlarmSeverityColor()
+        {
+            if (_alarmSeverityLabel == null)
+            {
+                return;
+            }
+
+            _alarmSeverityLabel.style.color = _alarmState?.Severity switch
+            {
+                AlarmSeverity.Warning => new Color(1f, 0.55f, 0.12f),
+                AlarmSeverity.Critical => new Color(1f, 0.2f, 0.15f),
+                _ => new Color(0.62f, 0.7f, 0.77f)
+            };
         }
 
         private void UpdateFaultControls()

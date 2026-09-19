@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TwinTrace.Alarms;
 using TwinTrace.Domain;
 using TwinTrace.Presentation;
 using TwinTrace.Telemetry;
@@ -13,6 +14,7 @@ namespace TwinTrace.Composition
         [SerializeField] private TelemetrySourceBehaviour telemetrySource;
 
         private DeviceRegistry _registry;
+        private AlarmMonitor _alarmMonitor;
         private ITelemetrySource _activeSource;
 
         private void Awake()
@@ -27,10 +29,13 @@ namespace TwinTrace.Composition
 
             DeviceDescriptor[] descriptors = CreateDeviceDescriptors();
             _registry = new DeviceRegistry();
+            _alarmMonitor = new AlarmMonitor(new AlarmEvaluator());
 
             foreach (DeviceDescriptor descriptor in descriptors)
             {
-                _registry.Register(new DeviceState(descriptor));
+                var state = new DeviceState(descriptor);
+                _registry.Register(state);
+                _alarmMonitor.Register(state);
             }
 
             if (telemetrySource is SimulationTelemetrySource simulation)
@@ -62,6 +67,12 @@ namespace TwinTrace.Composition
 
             _activeSource.End();
             _activeSource.FrameReceived -= HandleFrameReceived;
+        }
+
+        private void OnDestroy()
+        {
+            _alarmMonitor?.Dispose();
+            _alarmMonitor = null;
         }
 
         private void HandleFrameReceived(TelemetryFrame frame)
@@ -106,6 +117,14 @@ namespace TwinTrace.Composition
                     continue;
                 }
 
+                if (!_alarmMonitor.TryGet(id, out DeviceAlarmState alarmState))
+                {
+                    Debug.LogWarning(
+                        $"No alarm state matches binding '{id}' on '{binding.gameObject.name}'.",
+                        binding);
+                    continue;
+                }
+
                 if (!boundIds.Add(id))
                 {
                     Debug.LogWarning(
@@ -113,7 +132,7 @@ namespace TwinTrace.Composition
                         binding);
                 }
 
-                binding.Bind(state);
+                binding.Bind(state, alarmState);
             }
         }
 

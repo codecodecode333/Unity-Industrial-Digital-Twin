@@ -2,7 +2,7 @@
 
 TwinTrace is a Unity 6 portfolio project for an industrial Digital Twin Incident Replay System.
 
-The repository currently contains **Phase 003-A: Fault Injection Pipeline**:
+The repository currently contains **Phase 003-B: Alarm Detection & Lifecycle**:
 
 - a Unity-independent device domain model;
 - immutable device descriptors for motors and conveyors;
@@ -15,9 +15,13 @@ The repository currently contains **Phase 003-A: Fault Injection Pipeline**:
 - status colors and RPM-driven motion for three primitive-based 3D devices;
 - mouse selection with a separate selection marker;
 - a UI Toolkit details panel that follows the selected device's live telemetry;
-- simulated Motor Overheat and Conveyor Jam faults that modify telemetry at its source.
+- simulated Motor Overheat and Conveyor Jam faults that modify telemetry at its source;
+- telemetry-driven Motor Overheat and Conveyor Jam alarm evaluation;
+- Warning/Critical hysteresis with Raised, SeverityChanged, and Cleared lifecycle events;
+- separate operational and alarm indicators for every scene device;
+- alarm severity and code in the selected-device details panel.
 
-Alarms, MQTT, recording, replay, and timeline features are intentionally out of scope for this phase.
+MQTT, recording, replay, and timeline features are intentionally out of scope for this phase.
 
 ## Requirements
 
@@ -32,7 +36,9 @@ Alarms, MQTT, recording, replay, and timeline features are intentionally out of 
 5. Observe the yellow selection marker and live details panel.
 6. Use the fault controls to inject or clear the selected device's simulated fault.
 7. Observe Motor temperature rise or Conveyor RPM fall and load rise.
-8. Click another device to switch selection, or empty space to clear it.
+8. Observe the alarm progress through Warning and Critical from telemetry values.
+9. Clear the fault and observe Critical → Warning → None recovery.
+10. Click another device to switch selection, or empty space to clear it.
 
 If the demo scene needs to be recreated, use **TwinTrace > Create Phase 002 Demo Scene**.
 
@@ -46,8 +52,10 @@ SimulationTelemetrySource
   -> DeviceRegistry.Apply
   -> DeviceState.Apply
   -> DeviceState.Changed
-  -> DevicePresenter
-  -> MaterialPropertyBlock status color and RPM motion
+  -> AlarmMonitor / AlarmEvaluator
+  -> DeviceAlarmState and lifecycle events
+  -> DevicePresenter / DeviceAlarmPresenter
+  -> operational status, alarm color, and RPM motion
 
 Mouse click
   -> Camera raycast
@@ -62,9 +70,12 @@ Fault button
   -> FaultInjectionController
   -> SimulationTelemetrySource device runtime
   -> abnormal TelemetryFrame
-  -> existing DeviceRegistry / DeviceState / presentation pipeline
+  -> existing DeviceRegistry / DeviceState pipeline
+  -> telemetry-driven alarm evaluation
 ```
 
 Pure C# code lives in `Assets/TwinTrace/Runtime/Core`. Its assembly has `noEngineReferences` enabled so the domain cannot accidentally depend on `UnityEngine`. Unity-facing source, presentation, and composition code lives in `Assets/TwinTrace/Runtime/Unity`.
+
+Alarm evaluation depends only on `DeviceState` telemetry and the previous `DeviceAlarmState`. It does not reference simulation fault types or any telemetry source implementation, and lifecycle timestamps come from `DeviceState.LastTelemetryAtUtc` so the same logic can later run against MQTT or replay telemetry.
 
 After the first frame is applied, a device accepts only frames whose sequence is greater than its last applied sequence. Duplicate and older frames return `TelemetryApplyResult.Stale` without changing state or raising the `Changed` event.

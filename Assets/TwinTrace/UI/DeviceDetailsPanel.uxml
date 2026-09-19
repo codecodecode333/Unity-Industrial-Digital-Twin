@@ -15,6 +15,11 @@
                 <ui:Label text="OPERATIONAL STATE" class="section-label" />
                 <ui:Label name="operational-state" text="RUNNING" class="state-value" />
             </ui:VisualElement>
+            <ui:VisualElement class="alarm-block">
+                <ui:Label text="ALARM STATUS" class="section-label" />
+                <ui:Label name="alarm-severity" text="NONE" class="alarm-severity" />
+                <ui:Label name="alarm-code" text="No Active Alarm" class="alarm-code" />
+            </ui:VisualElement>
             <ui:VisualElement class="metric-row">
                 <ui:Label text="Temperature" class="metric-label" />
                 <ui:Label name="temperature-value" text="56.4 °C" class="metric-value" />

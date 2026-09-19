@@ -87,7 +87,11 @@ namespace TwinTrace.EditorTools
 
         private static void CreateMotor(string id, Vector3 position)
         {
-            GameObject root = CreateDeviceRoot(id, position, out DevicePresenter presenter);
+            GameObject root = CreateDeviceRoot(
+                id,
+                position,
+                out DevicePresenter presenter,
+                out DeviceAlarmPresenter alarmPresenter);
 
             GameObject body = CreateChildPrimitive(root, "Motor Body", PrimitiveType.Cube);
             body.transform.localPosition = new Vector3(0f, 0.8f, 0f);
@@ -98,18 +102,26 @@ namespace TwinTrace.EditorTools
             rotor.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
             rotor.transform.localScale = new Vector3(0.42f, 1.2f, 0.42f);
 
-            Renderer indicator = CreateStatusIndicator(root, new Vector3(0f, 1.7f, 0f));
+            Renderer indicator = CreateStatusIndicator(root, new Vector3(-0.35f, 1.7f, 0f));
+            Renderer alarmIndicator = CreateAlarmIndicator(
+                root,
+                new Vector3(0.35f, 1.7f, 0f));
             presenter.ConfigureVisuals(
                 indicator,
                 new[] { rotor.transform },
                 Vector3.up,
                 0.05f);
+            alarmPresenter.Configure(alarmIndicator);
             CreateSelectionMarker(root, new Vector3(1.25f, 0.03f, 1.25f));
         }
 
         private static void CreateConveyor(string id, Vector3 position)
         {
-            GameObject root = CreateDeviceRoot(id, position, out DevicePresenter presenter);
+            GameObject root = CreateDeviceRoot(
+                id,
+                position,
+                out DevicePresenter presenter,
+                out DeviceAlarmPresenter alarmPresenter);
 
             GameObject body = CreateChildPrimitive(root, "Conveyor Body", PrimitiveType.Cube);
             body.transform.localPosition = new Vector3(0f, 0.55f, 0f);
@@ -128,21 +140,27 @@ namespace TwinTrace.EditorTools
                 rollers[index] = roller.transform;
             }
 
-            Renderer indicator = CreateStatusIndicator(root, new Vector3(0f, 1.65f, 0f));
+            Renderer indicator = CreateStatusIndicator(root, new Vector3(-0.35f, 1.65f, 0f));
+            Renderer alarmIndicator = CreateAlarmIndicator(
+                root,
+                new Vector3(0.35f, 1.65f, 0f));
             presenter.ConfigureVisuals(indicator, rollers, Vector3.up, 0.05f);
+            alarmPresenter.Configure(alarmIndicator);
             CreateSelectionMarker(root, new Vector3(2.4f, 0.03f, 1.15f));
         }
 
         private static GameObject CreateDeviceRoot(
             string id,
             Vector3 position,
-            out DevicePresenter presenter)
+            out DevicePresenter presenter,
+            out DeviceAlarmPresenter alarmPresenter)
         {
             var root = new GameObject(id);
             root.transform.position = position;
             presenter = root.AddComponent<DevicePresenter>();
+            alarmPresenter = root.AddComponent<DeviceAlarmPresenter>();
             DeviceBinding binding = root.AddComponent<DeviceBinding>();
-            binding.Configure(new DeviceId(id), presenter);
+            binding.Configure(new DeviceId(id), presenter, alarmPresenter);
             return root;
         }
 
@@ -165,6 +183,17 @@ namespace TwinTrace.EditorTools
                 PrimitiveType.Sphere);
             indicator.transform.localPosition = localPosition;
             indicator.transform.localScale = Vector3.one * 0.35f;
+            return indicator.GetComponent<Renderer>();
+        }
+
+        private static Renderer CreateAlarmIndicator(GameObject parent, Vector3 localPosition)
+        {
+            GameObject indicator = CreateChildPrimitive(
+                parent,
+                "Alarm Indicator",
+                PrimitiveType.Sphere);
+            indicator.transform.localPosition = localPosition;
+            indicator.transform.localScale = Vector3.one * 0.28f;
             return indicator.GetComponent<Renderer>();
         }
 
