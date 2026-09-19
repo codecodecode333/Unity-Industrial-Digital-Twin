@@ -1,6 +1,7 @@
 using System.Globalization;
 using TwinTrace.Domain;
 using TwinTrace.Interaction;
+using TwinTrace.Telemetry;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -13,12 +14,15 @@ namespace TwinTrace.Presentation
         [SerializeField] private UIDocument document;
         [SerializeField] private StyleSheet styleSheet;
         [SerializeField] private DeviceSelectionController selectionController;
+        [SerializeField] private FaultInjectionController faultInjectionController;
 
         private DeviceState _state;
         private bool _isListeningForSelection;
         private VisualElement _viewRoot;
+        private VisualElement _panelRoot;
         private VisualElement _emptyState;
         private VisualElement _detailsContent;
+        private VisualElement _faultControls;
         private Label _displayNameLabel;
         private Label _deviceIdLabel;
         private Label _deviceKindLabel;
@@ -27,6 +31,8 @@ namespace TwinTrace.Presentation
         private Label _rpmLabel;
         private Label _loadLabel;
         private Label _lastUpdateLabel;
+        private Button _injectFaultButton;
+        private Button _clearFaultButton;
 
         public DeviceState BoundState => _state;
         public string DisplayedName { get; private set; } = "No Device Selected";
@@ -41,12 +47,15 @@ namespace TwinTrace.Presentation
         public void Configure(
             UIDocument uiDocument,
             StyleSheet panelStyleSheet,
-            DeviceSelectionController controller)
+            DeviceSelectionController controller,
+            FaultInjectionController faultController = null)
         {
             StopListeningForSelection();
+            UnregisterFaultButtonCallbacks();
             document = uiDocument;
             styleSheet = panelStyleSheet;
             selectionController = controller;
+            faultInjectionController = faultController;
             _viewRoot = null;
             InitializeView();
 
@@ -55,6 +64,36 @@ namespace TwinTrace.Presentation
                 StartListeningForSelection();
                 HandleSelectionChanged(selectionController?.Selected);
             }
+        }
+
+        public FaultInjectionResult InjectFaultForSelection()
+        {
+            return faultInjectionController == null
+                ? FaultInjectionResult.UnknownDevice
+                : faultInjectionController.InjectDefaultFaultForSelectedDevice();
+        }
+
+        public bool ClearFaultForSelection()
+        {
+            return faultInjectionController != null &&
+                faultInjectionController.ClearFaultForSelectedDevice();
+        }
+
+        public bool ContainsScreenPosition(Vector2 screenPosition)
+        {
+            InitializeView();
+            if (_panelRoot?.panel == null)
+            {
+                return false;
+            }
+
+            Vector2 topLeftScreenPosition = new Vector2(
+                screenPosition.x,
+                Screen.height - screenPosition.y);
+            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(
+                _panelRoot.panel,
+                topLeftScreenPosition);
+            return _panelRoot.worldBound.Contains(panelPosition);
         }
 
         public void Bind(DeviceState state)
@@ -111,8 +150,10 @@ namespace TwinTrace.Presentation
                 _viewRoot.styleSheets.Add(styleSheet);
             }
 
+            _panelRoot = _viewRoot.Q<VisualElement>("details-panel");
             _emptyState = _viewRoot.Q<VisualElement>("empty-state");
             _detailsContent = _viewRoot.Q<VisualElement>("details-content");
+            _faultControls = _viewRoot.Q<VisualElement>("fault-controls");
             _displayNameLabel = _viewRoot.Q<Label>("display-name");
             _deviceIdLabel = _viewRoot.Q<Label>("device-id");
             _deviceKindLabel = _viewRoot.Q<Label>("device-kind");
@@ -121,6 +162,9 @@ namespace TwinTrace.Presentation
             _rpmLabel = _viewRoot.Q<Label>("rpm-value");
             _loadLabel = _viewRoot.Q<Label>("load-value");
             _lastUpdateLabel = _viewRoot.Q<Label>("last-update-value");
+            _injectFaultButton = _viewRoot.Q<Button>("inject-fault-button");
+            _clearFaultButton = _viewRoot.Q<Button>("clear-fault-button");
+            RegisterFaultButtonCallbacks();
             UpdateView();
         }
 
@@ -237,6 +281,66 @@ namespace TwinTrace.Presentation
             SetText(_rpmLabel, DisplayedRpm);
             SetText(_loadLabel, DisplayedLoad);
             SetText(_lastUpdateLabel, DisplayedLastUpdate);
+            UpdateFaultControls();
+        }
+
+        private void UpdateFaultControls()
+        {
+            bool canControlFault = _state != null && faultInjectionController != null;
+            if (_faultControls != null)
+            {
+                _faultControls.style.display = canControlFault
+                    ? DisplayStyle.Flex
+                    : DisplayStyle.None;
+            }
+
+            if (_injectFaultButton == null || _state == null)
+            {
+                return;
+            }
+
+            _injectFaultButton.text = _state.Descriptor.Kind == DeviceKind.Motor
+                ? "Inject Motor Overheat"
+                : "Inject Conveyor Jam";
+        }
+
+        private void RegisterFaultButtonCallbacks()
+        {
+            if (_injectFaultButton != null)
+            {
+                _injectFaultButton.clicked += HandleInjectFaultClicked;
+            }
+
+            if (_clearFaultButton != null)
+            {
+                _clearFaultButton.clicked += HandleClearFaultClicked;
+            }
+        }
+
+        private void UnregisterFaultButtonCallbacks()
+        {
+            if (_injectFaultButton != null)
+            {
+                _injectFaultButton.clicked -= HandleInjectFaultClicked;
+            }
+
+            if (_clearFaultButton != null)
+            {
+                _clearFaultButton.clicked -= HandleClearFaultClicked;
+            }
+
+            _injectFaultButton = null;
+            _clearFaultButton = null;
+        }
+
+        private void HandleInjectFaultClicked()
+        {
+            InjectFaultForSelection();
+        }
+
+        private void HandleClearFaultClicked()
+        {
+            ClearFaultForSelection();
         }
 
         private static void SetText(Label label, string value)

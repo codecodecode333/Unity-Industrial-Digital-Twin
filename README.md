@@ -2,7 +2,7 @@
 
 TwinTrace is a Unity 6 portfolio project for an industrial Digital Twin Incident Replay System.
 
-The repository currently contains **Phase 002-D: Device Selection & Live Details Panel**:
+The repository currently contains **Phase 003-A: Fault Injection Pipeline**:
 
 - a Unity-independent device domain model;
 - immutable device descriptors for motors and conveyors;
@@ -14,9 +14,10 @@ The repository currently contains **Phase 002-D: Device Selection & Live Details
 - Device ID bindings between Domain state and Scene objects;
 - status colors and RPM-driven motion for three primitive-based 3D devices;
 - mouse selection with a separate selection marker;
-- a UI Toolkit details panel that follows the selected device's live telemetry.
+- a UI Toolkit details panel that follows the selected device's live telemetry;
+- simulated Motor Overheat and Conveyor Jam faults that modify telemetry at its source.
 
-MQTT, fault injection, alarms, recording, replay, and timeline features are intentionally out of scope for this phase.
+Alarms, MQTT, recording, replay, and timeline features are intentionally out of scope for this phase.
 
 ## Requirements
 
@@ -29,7 +30,9 @@ MQTT, fault injection, alarms, recording, replay, and timeline features are inte
 3. Enter Play Mode.
 4. Click a motor or conveyor part to select its device.
 5. Observe the yellow selection marker and live details panel.
-6. Click another device to switch selection, or empty space to clear it.
+6. Use the fault controls to inject or clear the selected device's simulated fault.
+7. Observe Motor temperature rise or Conveyor RPM fall and load rise.
+8. Click another device to switch selection, or empty space to clear it.
 
 If the demo scene needs to be recreated, use **TwinTrace > Create Phase 002 Demo Scene**.
 
@@ -54,6 +57,12 @@ Mouse click
   -> DeviceSelectionVisual and DeviceDetailsPanel
   -> selected DeviceState.Changed
   -> live UI Toolkit labels
+
+Fault button
+  -> FaultInjectionController
+  -> SimulationTelemetrySource device runtime
+  -> abnormal TelemetryFrame
+  -> existing DeviceRegistry / DeviceState / presentation pipeline
 ```
 
 Pure C# code lives in `Assets/TwinTrace/Runtime/Core`. Its assembly has `noEngineReferences` enabled so the domain cannot accidentally depend on `UnityEngine`. Unity-facing source, presentation, and composition code lives in `Assets/TwinTrace/Runtime/Unity`.

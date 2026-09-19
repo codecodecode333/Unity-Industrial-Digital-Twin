@@ -34,16 +34,23 @@ namespace TwinTrace.EditorTools
             CreateFloor();
 
             GameObject system = new GameObject("TwinTraceSystem");
-            system.AddComponent<SimulationTelemetrySource>();
+            SimulationTelemetrySource simulationSource =
+                system.AddComponent<SimulationTelemetrySource>();
             system.AddComponent<TwinTraceBootstrap>();
             DeviceSelectionController selectionController =
                 system.AddComponent<DeviceSelectionController>();
             selectionController.Configure(Camera.main);
+            FaultInjectionController faultInjectionController =
+                system.AddComponent<FaultInjectionController>();
+            faultInjectionController.Configure(selectionController, simulationSource);
 
             CreateMotor("MOTOR-001", new Vector3(-3.5f, 0f, 0f));
             CreateMotor("MOTOR-002", new Vector3(-0.8f, 0f, 0f));
             CreateConveyor("CONVEYOR-001", new Vector3(3f, 0f, 0f));
-            CreateDetailsPanel(selectionController);
+            DeviceDetailsPanel detailsPanel = CreateDetailsPanel(
+                selectionController,
+                faultInjectionController);
+            selectionController.ConfigureInputBlocker(detailsPanel);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[]
@@ -182,7 +189,9 @@ namespace TwinTrace.EditorTools
             selectionVisual.Configure(marker);
         }
 
-        private static void CreateDetailsPanel(DeviceSelectionController selectionController)
+        private static DeviceDetailsPanel CreateDetailsPanel(
+            DeviceSelectionController selectionController,
+            FaultInjectionController faultInjectionController)
         {
             PanelSettings panelSettings = GetOrCreatePanelSettings();
             VisualTreeAsset layout = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
@@ -202,7 +211,12 @@ namespace TwinTrace.EditorTools
             document.sortingOrder = 10;
 
             DeviceDetailsPanel panel = ui.AddComponent<DeviceDetailsPanel>();
-            panel.Configure(document, styleSheet, selectionController);
+            panel.Configure(
+                document,
+                styleSheet,
+                selectionController,
+                faultInjectionController);
+            return panel;
         }
 
         private static PanelSettings GetOrCreatePanelSettings()

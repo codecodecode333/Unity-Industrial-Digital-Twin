@@ -9,6 +9,7 @@ namespace TwinTrace.Interaction
     {
         [SerializeField] private Camera selectionCamera;
         [SerializeField, Min(0.1f)] private float maxRaycastDistance = 500f;
+        [SerializeField] private DeviceDetailsPanel inputBlockingPanel;
 
         public event Action<DeviceBinding> SelectionChanged;
 
@@ -17,6 +18,11 @@ namespace TwinTrace.Interaction
         public void Configure(Camera camera)
         {
             selectionCamera = camera;
+        }
+
+        public void ConfigureInputBlocker(DeviceDetailsPanel detailsPanel)
+        {
+            inputBlockingPanel = detailsPanel;
         }
 
         public void Select(DeviceBinding binding)
@@ -58,6 +64,17 @@ namespace TwinTrace.Interaction
             return binding != null;
         }
 
+        public bool HandlePointerClick(Vector2 screenPosition)
+        {
+            if (inputBlockingPanel != null &&
+                inputBlockingPanel.ContainsScreenPosition(screenPosition))
+            {
+                return false;
+            }
+
+            return SelectAtScreenPosition(screenPosition);
+        }
+
         public static DeviceBinding ResolveBinding(Component hitComponent)
         {
             return hitComponent == null
@@ -69,7 +86,7 @@ namespace TwinTrace.Interaction
         {
             if (Input.GetMouseButtonDown(0))
             {
-                SelectAtScreenPosition(Input.mousePosition);
+                HandlePointerClick(Input.mousePosition);
             }
         }
 

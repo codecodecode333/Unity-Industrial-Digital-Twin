@@ -8,6 +8,11 @@ namespace TwinTrace.Telemetry
     [DisallowMultipleComponent]
     public sealed class SimulationTelemetrySource : TelemetrySourceBehaviour
     {
+        private const float OverheatDegreesPerSecond = 6f;
+        private const float MaximumOverheatIncrease = 35f;
+        private const float ConveyorJamDurationSeconds = 4f;
+        private const float ConveyorJammedLoadPercent = 95f;
+
         [SerializeField, Min(0.05f)] private float intervalSeconds = 0.5f;
 
         private IReadOnlyList<SimulationDeviceProfile> _profiles =
@@ -19,6 +24,59 @@ namespace TwinTrace.Telemetry
         private float _simulationSeconds;
 
         public IReadOnlyList<SimulationDeviceProfile> Profiles => _profiles;
+
+        public FaultInjectionResult InjectFault(
+            DeviceId deviceId,
+            SimulatedFaultType fault)
+        {
+            SimulationDeviceRuntime runtime = FindRuntime(deviceId);
+            if (runtime == null)
+            {
+                return FaultInjectionResult.UnknownDevice;
+            }
+
+            if (fault == SimulatedFaultType.None)
+            {
+                return FaultInjectionResult.InvalidFault;
+            }
+
+            if (!IsCompatible(runtime.Profile.Descriptor.Kind, fault))
+            {
+                return FaultInjectionResult.IncompatibleDeviceKind;
+            }
+
+            runtime.ActiveFault = fault;
+            runtime.FaultElapsedSeconds = 0f;
+            return FaultInjectionResult.Injected;
+        }
+
+        public bool ClearFault(DeviceId deviceId)
+        {
+            SimulationDeviceRuntime runtime = FindRuntime(deviceId);
+            if (runtime == null)
+            {
+                return false;
+            }
+
+            runtime.ActiveFault = SimulatedFaultType.None;
+            runtime.FaultElapsedSeconds = 0f;
+            return true;
+        }
+
+        public bool TryGetActiveFault(
+            DeviceId deviceId,
+            out SimulatedFaultType fault)
+        {
+            SimulationDeviceRuntime runtime = FindRuntime(deviceId);
+            if (runtime == null)
+            {
+                fault = SimulatedFaultType.None;
+                return false;
+            }
+
+            fault = runtime.ActiveFault;
+            return true;
+        }
 
         public void Configure(IReadOnlyList<SimulationDeviceProfile> profiles)
         {
@@ -118,6 +176,8 @@ namespace TwinTrace.Telemetry
                     0f,
                     100f);
 
+                ApplyFault(runtime, ref temperature, ref rpm, ref load);
+
                 runtime.Sequence++;
                 Publish(new TelemetryFrame(
                     profile.Descriptor.Id,
@@ -129,6 +189,59 @@ namespace TwinTrace.Telemetry
             }
 
             _simulationSeconds += intervalSeconds;
+        }
+
+        private void ApplyFault(
+            SimulationDeviceRuntime runtime,
+            ref float temperature,
+            ref float rpm,
+            ref float load)
+        {
+            if (runtime.ActiveFault == SimulatedFaultType.None)
+            {
+                return;
+            }
+
+            runtime.FaultElapsedSeconds += intervalSeconds;
+
+            switch (runtime.ActiveFault)
+            {
+                case SimulatedFaultType.MotorOverheat:
+                    temperature += Mathf.Min(
+                        runtime.FaultElapsedSeconds * OverheatDegreesPerSecond,
+                        MaximumOverheatIncrease);
+                    break;
+
+                case SimulatedFaultType.ConveyorJam:
+                    float progress = Mathf.Clamp01(
+                        runtime.FaultElapsedSeconds / ConveyorJamDurationSeconds);
+                    rpm = Mathf.Lerp(rpm, 0f, progress);
+                    load = Mathf.Lerp(load, ConveyorJammedLoadPercent, progress);
+                    break;
+            }
+        }
+
+        private SimulationDeviceRuntime FindRuntime(DeviceId deviceId)
+        {
+            foreach (SimulationDeviceRuntime runtime in _runtimeDevices)
+            {
+                if (runtime.Profile.Descriptor.Id == deviceId)
+                {
+                    return runtime;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsCompatible(DeviceKind kind, SimulatedFaultType fault)
+        {
+            return (kind, fault) switch
+            {
+                (DeviceKind.Motor, SimulatedFaultType.MotorOverheat) => true,
+                (DeviceKind.Conveyor, SimulatedFaultType.ConveyorJam) => true,
+                _ => false
+            };
         }
 
         private void OnValidate()
@@ -145,6 +258,8 @@ namespace TwinTrace.Telemetry
 
             public SimulationDeviceProfile Profile { get; }
             public long Sequence { get; set; }
+            public SimulatedFaultType ActiveFault { get; set; }
+            public float FaultElapsedSeconds { get; set; }
         }
     }
 }

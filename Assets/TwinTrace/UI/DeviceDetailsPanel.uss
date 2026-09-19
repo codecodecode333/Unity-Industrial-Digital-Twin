@@ -146,3 +146,55 @@
     font-size: 12px;
     -unity-font-style: normal;
 }
+
+.fault-controls {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top-color: rgb(48, 61, 75);
+    border-top-width: 1px;
+}
+
+.fault-section-label {
+    margin-bottom: 10px;
+}
+
+.fault-button {
+    height: 34px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    color: rgb(246, 249, 252);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.inject-button {
+    background-color: rgb(176, 74, 39);
+}
+
+.inject-button:hover {
+    background-color: rgb(206, 89, 48);
+}
+
+.inject-button:active {
+    background-color: rgb(139, 56, 30);
+}
+
+.clear-button {
+    background-color: rgb(45, 61, 76);
+}
+
+.clear-button:hover {
+    background-color: rgb(59, 78, 96);
+}
+
+.clear-button:active {
+    background-color: rgb(34, 47, 59);
+}

@@ -32,6 +32,11 @@
                 <ui:Label text="Last Update" class="metric-label" />
                 <ui:Label name="last-update-value" text="19:41:22" class="metric-value secondary-value" />
             </ui:VisualElement>
+            <ui:VisualElement name="fault-controls" class="fault-controls">
+                <ui:Label text="FAULT SIMULATION" class="section-label fault-section-label" />
+                <ui:Button name="inject-fault-button" text="Inject Motor Overheat" class="fault-button inject-button" />
+                <ui:Button name="clear-fault-button" text="Clear Fault" class="fault-button clear-button" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
